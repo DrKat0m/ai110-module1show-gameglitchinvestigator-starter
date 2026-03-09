@@ -1,73 +1,22 @@
 import random
 import streamlit as st
-
-def get_range_for_difficulty(difficulty: str):
-    if difficulty == "Easy":
-        return 1, 20
-    if difficulty == "Normal":
-        return 1, 100
-    if difficulty == "Hard":
-        return 1, 50
-    return 1, 100
-
-
-def parse_guess(raw: str):
-    if raw is None:
-        return False, None, "Enter a guess."
-
-    if raw == "":
-        return False, None, "Enter a guess."
-
-    try:
-        if "." in raw:
-            value = int(float(raw))
-        else:
-            value = int(raw)
-    except Exception:
-        return False, None, "That is not a number."
-
-    return True, value, None
-
-
-def check_guess(guess, secret):
-    if guess == secret:
-        return "Win", "🎉 Correct!"
-
-    try:
-        if guess > secret:
-            return "Too High", "📈 Go HIGHER!"
-        else:
-            return "Too Low", "📉 Go LOWER!"
-    except TypeError:
-        g = str(guess)
-        if g == secret:
-            return "Win", "🎉 Correct!"
-        if g > secret:
-            return "Too High", "📈 Go HIGHER!"
-        return "Too Low", "📉 Go LOWER!"
-
-
-def update_score(current_score: int, outcome: str, attempt_number: int):
-    if outcome == "Win":
-        points = 100 - 10 * (attempt_number + 1)
-        if points < 10:
-            points = 10
-        return current_score + points
-
-    if outcome == "Too High":
-        if attempt_number % 2 == 0:
-            return current_score + 5
-        return current_score - 5
-
-    if outcome == "Too Low":
-        return current_score - 5
-
-    return current_score
+import logic_utils as utils
 
 st.set_page_config(page_title="Glitchy Guesser", page_icon="🎮")
 
+def reset_game(difficulty_name):
+    low, high = utils.get_range_for_difficulty(difficulty_name)
+    st.session_state.secret = random.randint(low, high)
+    st.session_state.attempts = 0
+    st.session_state.status = "playing"
+    st.session_state.history = []
+    st.session_state.current_difficulty = difficulty_name
+    # We keep the total session score unless it's a completely fresh start, 
+    # but for a "New Game" button, usually we just want to play again.
+    # Optionally reset score: st.session_state.score = 0
+
 st.title("🎮 Game Glitch Investigator")
-st.caption("An AI-generated guessing game. Something is off.")
+st.caption("Investigate and fix the glitches in this AI-generated game.")
 
 st.sidebar.header("Settings")
 
@@ -83,32 +32,29 @@ attempt_limit_map = {
     "Hard": 5,
 }
 attempt_limit = attempt_limit_map[difficulty]
-
-low, high = get_range_for_difficulty(difficulty)
+low, high = utils.get_range_for_difficulty(difficulty)
 
 st.sidebar.caption(f"Range: {low} to {high}")
 st.sidebar.caption(f"Attempts allowed: {attempt_limit}")
 
-if "secret" not in st.session_state:
-    st.session_state.secret = random.randint(low, high)
-
-if "attempts" not in st.session_state:
-    st.session_state.attempts = 1
-
+# Initialize state
 if "score" not in st.session_state:
     st.session_state.score = 0
 
-if "status" not in st.session_state:
-    st.session_state.status = "playing"
+if "current_difficulty" not in st.session_state:
+    reset_game(difficulty)
 
-if "history" not in st.session_state:
-    st.session_state.history = []
+# Detect difficulty change and reset if needed
+if st.session_state.current_difficulty != difficulty:
+    reset_game(difficulty)
+    st.info(f"Difficulty changed to {difficulty}. New game started!")
 
 st.subheader("Make a guess")
 
+attempts_left = attempt_limit - st.session_state.attempts
 st.info(
-    f"Guess a number between 1 and 100. "
-    f"Attempts left: {attempt_limit - st.session_state.attempts}"
+    f"Guess a number between {low} and {high}. "
+    f"Attempts left: {max(0, attempts_left)}"
 )
 
 with st.expander("Developer Debug Info"):
@@ -118,74 +64,74 @@ with st.expander("Developer Debug Info"):
     st.write("Difficulty:", difficulty)
     st.write("History:", st.session_state.history)
 
+# Using a unique key for the text input is good, but we want it to clear on reset.
+# Streamlit clears components when the key changes or on rerun if not managed.
 raw_guess = st.text_input(
     "Enter your guess:",
-    key=f"guess_input_{difficulty}"
+    key="guess_input"
 )
 
 col1, col2, col3 = st.columns(3)
 with col1:
-    submit = st.button("Submit Guess 🚀")
+    submit = st.button("Submit Guess 🚀", disabled=(st.session_state.status != "playing"))
 with col2:
     new_game = st.button("New Game 🔁")
 with col3:
     show_hint = st.checkbox("Show hint", value=True)
 
 if new_game:
-    st.session_state.attempts = 0
-    st.session_state.secret = random.randint(1, 100)
+    reset_game(difficulty)
     st.success("New game started.")
     st.rerun()
 
 if st.session_state.status != "playing":
     if st.session_state.status == "won":
-        st.success("You already won. Start a new game to play again.")
+        st.success(f"You won! The secret was {st.session_state.secret}. Final score: {st.session_state.score}")
     else:
-        st.error("Game over. Start a new game to try again.")
+        st.error(f"Game over! The secret was {st.session_state.secret}. Final score: {st.session_state.score}")
+    st.info("Click 'New Game' to play again.")
     st.stop()
 
 if submit:
-    st.session_state.attempts += 1
-
-    ok, guess_int, err = parse_guess(raw_guess)
-
-    if not ok:
-        st.session_state.history.append(raw_guess)
-        st.error(err)
+    if not raw_guess:
+        st.warning("Please enter a number first!")
     else:
-        st.session_state.history.append(guess_int)
+        # FIX: Used Copilot Agent to refactor this logic from app.py to logic_utils.py
+        ok, guess_int, err = utils.parse_guess(raw_guess)
 
-        if st.session_state.attempts % 2 == 0:
-            secret = str(st.session_state.secret)
+        if not ok:
+            st.error(err)
         else:
-            secret = st.session_state.secret
+            st.session_state.attempts += 1
+            st.session_state.history.append(guess_int)
 
-        outcome, message = check_guess(guess_int, secret)
+            # FIXME: Logic breaks here - the check_guess function was returning incorrect hints (Higher/Lower)
+            # FIX: Used Copilot to separate logic from UI. Refactored check_guess to logic_utils.py
+            outcome, message = utils.check_guess(guess_int, st.session_state.secret)
 
-        if show_hint:
-            st.warning(message)
+            if show_hint:
+                if outcome != "Win":
+                    st.warning(message)
 
-        st.session_state.score = update_score(
-            current_score=st.session_state.score,
-            outcome=outcome,
-            attempt_number=st.session_state.attempts,
-        )
-
-        if outcome == "Win":
-            st.balloons()
-            st.session_state.status = "won"
-            st.success(
-                f"You won! The secret was {st.session_state.secret}. "
-                f"Final score: {st.session_state.score}"
+            st.session_state.score = utils.update_score(
+                current_score=st.session_state.score,
+                outcome=outcome,
+                attempt_number=st.session_state.attempts,
+                difficulty=difficulty
             )
-        else:
-            if st.session_state.attempts >= attempt_limit:
+
+            if outcome == "Win":
+                st.balloons()
+                st.session_state.status = "won"
+                st.success(f"🎉 Correct! You found it in {st.session_state.attempts} attempts.")
+                st.rerun()
+            elif st.session_state.attempts >= attempt_limit:
                 st.session_state.status = "lost"
-                st.error(
-                    f"Out of attempts! "
-                    f"The secret was {st.session_state.secret}. "
-                    f"Score: {st.session_state.score}"
-                )
+                st.error("❌ Out of attempts!")
+                st.rerun()
+
+st.divider()
+st.caption("Glitch Investigator Mode: Active")
 
 st.divider()
 st.caption("Built by an AI that claims this code is production-ready.")

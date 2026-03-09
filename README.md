@@ -25,14 +25,25 @@ It wrote the code, ran away, and now the game is unplayable.
 
 ## 📝 Document Your Experience
 
-- [ ] Describe the game's purpose.
-- [ ] Detail which bugs you found.
-- [ ] Explain what fixes you applied.
+- [x] **Describe the game's purpose:** The "Impossible Guesser" is a number guessing game where the player tries to guess a secret number within a certain number of attempts, with hints provided along the way.
+- [x] **Detail which bugs you found:**
+    1. **Secret Number Instability:** The secret number changed every time the user submitted a guess or interacted with the UI.
+    2. **Incorrect Hints:** The "Higher/Lower" hints were backwards or logically flawed.
+    3. **UI/Logic Mixing:** Core game logic was mixed with Streamlit UI code, making it hard to test.
+- [x] **Explain what fixes you applied:**
+    1. **Session State:** Used `st.session_state` to store the secret number and attempts so they persist across reruns.
+    2. **Logic Refactoring:** Moved all game logic (`check_guess`, `parse_guess`, etc.) into `logic_utils.py`.
+    3. **Automated Testing:** Added `pytest` cases to verify the logic in isolation.
 
 ## 📸 Demo
 
-- [ ] [Insert a screenshot of your fixed, winning game here]
+- [x] **Challenge 1: Advanced Edge-Case Testing:** Passed 6 tests covering win conditions, hints, and input validation failures.
+
+![Fixed winning game UI](image.png)
+![Pytest Passing Screenshot](image-1.png)
+
+---
 
 ## 🚀 Stretch Features
 
-- [ ] [If you choose to complete Challenge 4, insert a screenshot of your Enhanced Game UI here]
+- [x] **Challenge 1: Advanced Edge-Case Testing** - Implemented robust tests for invalid numbers and empty strings.
