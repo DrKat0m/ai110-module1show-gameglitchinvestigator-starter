@@ -37,7 +37,7 @@ It wrote the code, ran away, and now the game is unplayable.
 
 ## 📸 Demo
 
-- [x] **Challenge 1: Advanced Edge-Case Testing:** Passed 6 tests covering win conditions, hints, and input validation failures.
+- [x] **Fixed winning game UI:** Passed 6 tests covering win conditions, hints, and input validation failures.
 
 ![Fixed winning game UI](image.png)
 ![Pytest Passing Screenshot](image-1.png)
